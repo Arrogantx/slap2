@@ -15,7 +15,8 @@ export const handle = SvelteKitAuth({
           scope: "users.read tweet.read offline.access",
           code_challenge_method: "S256"
         }
-      }
+      },
+      token: "https://api.twitter.com/2/oauth2/token" // Added to fix 403 errors
     })
   ],
   secret: AUTH_SECRET,
@@ -41,16 +42,23 @@ export const handle = SvelteKitAuth({
   }
 });
 
-// CORS Middleware (Enable Only If Needed)
+// CORS Middleware (Fixes OAuth "Cross-site" error)
 export async function handleRequest({ event, resolve }) {
-  const response = await resolve(event);
-
-  // Only set CORS headers for API routes
-  if (event.url.pathname.startsWith('/auth')) {
-    response.headers.set("Access-Control-Allow-Origin", "*");
-    response.headers.set("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
-    response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (event.request.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization"
+      }
+    });
   }
+
+  const response = await resolve(event);
+  response.headers.set("Access-Control-Allow-Origin", "*");
+  response.headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
   return response;
 }

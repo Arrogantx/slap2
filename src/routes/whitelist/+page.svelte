@@ -8,27 +8,31 @@
     import { page } from '$app/stores';
     import { writable } from 'svelte/store';
 
-    // Use writable() instead of $state()
+    // Reactive variables (writable stores)
     let status = writable('');
     let loading = writable(false);
     let lastChecked = writable(null);
     let twitterHandle = writable(null);
 
     async function checkWhitelistStatus() {
-        if (!signerAddress) return;
+        let address;
+        signerAddress.subscribe(value => { address = value; });
 
-        loading.set(true);
+        if (!address || typeof address !== 'string') {
+            console.error("signerAddress is invalid:", address);
+            return;
+        }
+
+        const lowerAddress = address.toLowerCase();
+        console.log('Checking whitelist status for:', lowerAddress);
+
         try {
-            const lowerAddress = signerAddress.toLowerCase();
-            console.log('Checking whitelist status for:', lowerAddress);
-
-            // First check if address is blacklisted
             const { data: blacklistData, error: blacklistError } = await supabase
                 .from('blacklist')
                 .select('id')
                 .eq('wallet_address', lowerAddress)
-                .maybeSingle();  // Prevents 406 errors when no data is found
-            
+                .maybeSingle(); // Prevents 406 errors
+
             if (blacklistError) {
                 console.error('Blacklist check error:', blacklistError);
                 throw blacklistError;
@@ -40,18 +44,15 @@
                 return;
             }
 
-            // Then check whitelist status
+            // Check whitelist status
             const { data, error } = await supabase
                 .from('whitelist_requests')
                 .select('status, updated_at, twitter_handle')
                 .eq('wallet_address', lowerAddress)
                 .order('updated_at', { ascending: false })
                 .limit(1);
-            
-            if (error) {
-                console.error('Whitelist status check error:', error);
-                throw error;
-            }
+
+            if (error) throw error;
 
             if (data && data.length > 0) {
                 status.set(data[0].status);
@@ -62,22 +63,24 @@
                 lastChecked.set(null);
                 twitterHandle.set(null);
             }
+
             console.log('Whitelist status:', data?.[0]?.status, 'Last updated:', lastChecked);
         } catch (error) {
             console.error('Failed to check whitelist status:', error);
-            status.set('');
-            lastChecked.set(null);
-        } finally {
-            loading.set(false);
         }
     }
 
     async function requestWhitelist() {
-        if (!signerAddress || !page.data.session?.user?.username) return;
+        let address;
+        let sessionUser;
+        signerAddress.subscribe(value => { address = value; });
+        page.subscribe(data => { sessionUser = data?.session?.user?.username; });
+
+        if (!address || !sessionUser) return;
 
         loading.set(true);
         try {
-            const lowerAddress = signerAddress.toLowerCase();
+            const lowerAddress = address.toLowerCase();
             console.log('Submitting whitelist request for:', lowerAddress);
 
             // Check if address is blacklisted
@@ -103,7 +106,7 @@
                 .from('whitelist_requests')
                 .insert([{ 
                     wallet_address: lowerAddress,
-                    twitter_handle: page.data.session.user.username,
+                    twitter_handle: sessionUser,
                     status: 'pending',
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
@@ -115,7 +118,7 @@
             }
 
             status.set('pending');
-            twitterHandle.set(page.data.session.user.username);
+            twitterHandle.set(sessionUser);
             lastChecked.set(new Date());
             console.log('Whitelist request submitted successfully');
         } catch (error) {
@@ -155,7 +158,7 @@
         </Card.Header>
         <Card.Content>
             {#if connected}
-            {#if !$page.data?.session}
+                {#if !$page.data?.session}
                     <div class="text-center">
                         <p class="mb-4">Please connect your X (Twitter) account to continue.</p>
                         <Button class="hover-lift" on:click={() => signIn('twitter')}>
