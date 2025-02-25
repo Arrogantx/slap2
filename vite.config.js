@@ -4,8 +4,16 @@ import { defineConfig } from 'vite';
 export default defineConfig({
 	plugins: [sveltekit()],
 	server: {
-		host: true, // Allows external access
+		host: true,
 		strictPort: false,
-		allowedHosts: ['avaxslap.com'], // Add this to explicitly allow the domain
+		allowedHosts: ['avaxslap.com'],
+	},
+	optimizeDeps: {
+		include: ['@supabase/supabase-js']
+	},
+	build: {
+		rollupOptions: {
+			external: ['@supabase/supabase-js']
+		}
 	}
 });
