@@ -47,11 +47,12 @@
     }
 
     function exportToCSV(data, filename) {
-        const headers = ['Wallet Address', 'Status', 'Date', 'Updated'];
+        const headers = ['Wallet Address', 'X Handle', 'Status', 'Date', 'Updated'];
         const csvContent = [
             headers.join(','),
             ...data.map(row => [
                 row.wallet_address,
+                row.twitter_handle || '',
                 row.status,
                 new Date(row.created_at).toISOString(),
                 new Date(row.updated_at).toISOString()
@@ -149,6 +150,7 @@
                     <Table.Header>
                         <Table.Row>
                             <Table.Head>Wallet</Table.Head>
+                            <Table.Head>X Handle</Table.Head>
                             <Table.Head>Status</Table.Head>
                             <Table.Head>Date</Table.Head>
                             <Table.Head>Updated</Table.Head>
@@ -157,12 +159,27 @@
                     <Table.Body>
                         {#if loading}
                             <Table.Row>
-                                <Table.Cell colspan="4" class="text-center">Loading...</Table.Cell>
+                                <Table.Cell colspan="5" class="text-center">Loading...</Table.Cell>
                             </Table.Row>
                         {:else}
                             {#each (activeTab === 'approved' ? approvedRequests : deniedRequests) as request}
                                 <Table.Row>
                                     <Table.Cell>{format.address(request.wallet_address)}</Table.Cell>
+                                    <Table.Cell>
+                                        {#if request.twitter_handle}
+                                            <a 
+                                                href="https://x.com/{request.twitter_handle}" 
+                                                target="_blank" 
+                                                rel="noopener noreferrer" 
+                                                class="text-primary hover:underline"
+                                            >
+                                                @{request.twitter_handle}
+                                            </a>
+                                        {:else}
+                                            -
+                                        {/if}
+                                        
+                                    </Table.Cell>
                                     <Table.Cell>
                                         <span class={activeTab === 'approved' ? 'text-green-500' : 'text-red-500'}>
                                             {request.status}
@@ -180,7 +197,7 @@
                             
                             {#if (activeTab === 'approved' ? approvedRequests : deniedRequests).length === 0}
                                 <Table.Row>
-                                    <Table.Cell colspan="4" class="text-center text-muted-foreground">
+                                    <Table.Cell colspan="5" class="text-center text-muted-foreground">
                                         No {activeTab} requests found
                                     </Table.Cell>
                                 </Table.Row>

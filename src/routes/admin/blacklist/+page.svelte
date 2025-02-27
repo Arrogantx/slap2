@@ -10,19 +10,19 @@
     import { Input } from "$lib/components/ui/input";
     import { Label } from "$lib/components/ui/label";
   
-    let blacklistedAddresses = writable([]);
-    let loading = writable(true);
-    let adding = writable(false);
-    let error = writable(null);
-    let newAddress = writable('');
-    let reason = writable('');
+    let blacklistedAddresses = $state([]);
+    let loading = $state(true);
+    let adding = $state(false);
+    let error = $state(null);
+    let newAddress = $state('');
+    let reason = $state('');
   
     async function loadBlacklist() {
       if (!$isAdmin) return;
   
       try {
-        loading.set(true);
-        error.set(null);
+        loading = true;
+        error = null;
   
         const { data, error: fetchError } = await supabase
           .from('blacklist')
@@ -30,12 +30,12 @@
           .order('created_at', { ascending: false });
   
         if (fetchError) throw fetchError;
-        blacklistedAddresses.set(data || []);
+        blacklistedAddresses = data || [];
       } catch (err) {
         console.error('Failed to load blacklist:', err);
-        error.set('Failed to load blacklist. Please try again.');
+        error = 'Failed to load blacklist. Please try again.';
       } finally {
-        loading.set(false);
+        loading = false;
       }
     }
   
@@ -43,8 +43,8 @@
       if (!$isAdmin || !newAddress || adding) return;
   
       try {
-        adding.set(true);
-        error.set(null);
+        adding = true;
+        error = null;
   
         const formattedAddress = newAddress.toLowerCase();
   
@@ -59,7 +59,7 @@
         }
   
         if (existing) {
-          error.set('Address is already blacklisted');
+          error = 'Address is already blacklisted';
           return;
         }
   
@@ -87,15 +87,15 @@
           console.error('Failed to auto-deny whitelist:', updateError);
         }
   
-        newAddress.set('');
-        reason.set('');
+        newAddress = '';
+        reason = '';
         await loadBlacklist();
   
       } catch (err) {
         console.error('Failed to add to blacklist:', err);
-        error.set(`Failed to add address to blacklist: ${err.message}`);
+        error = `Failed to add address to blacklist: ${err.message}`;
       } finally {
-        adding.set(false);
+        adding = false;
       }
     }
   
@@ -103,7 +103,7 @@
       if (!$isAdmin) return;
   
       try {
-        error.set(null);
+        error = null;
   
         const { error: deleteError } = await supabase
           .from('blacklist')
@@ -112,13 +112,11 @@
   
         if (deleteError) throw deleteError;
   
-        blacklistedAddresses.update((list) =>
-          list.filter((item) => item.id !== id)
-        );
+        blacklistedAddresses = blacklistedAddresses.filter((item) => item.id !== id);
   
       } catch (err) {
         console.error('Failed to remove from blacklist:', err);
-        error.set(`Failed to remove address from blacklist: ${err.message}`);
+        error = `Failed to remove address from blacklist: ${err.message}`;
       }
     }
   
@@ -127,8 +125,7 @@
         loadBlacklist();
       }
     });
-  </script>
-  
+</script>
 
 <div class="container mx-auto py-8">
     {#if !$connected}
@@ -156,7 +153,6 @@
                             {error}
                         </div>
                     {/if}
-                    
                     
                     <div class="space-y-4 mb-8">
                         <div class="grid gap-4">
@@ -224,14 +220,11 @@
                                         </Table.Cell>
                                     </Table.Row>
                                 {/each}
-                                
                             {/if}
-                            
                         </Table.Body>
                     </Table.Root>
                 </Card.Content>
             </Card.Root>
         </div>
     {/if}
-    
 </div>

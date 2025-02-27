@@ -11,11 +11,11 @@
 
     let requests = writable([]);
     let loading = writable(true);
-    let updating = writable({});  // Store to track updating state per request
+    let updating = writable({});
     let error = writable(null);
 
     async function loadRequests() {
-        if (!connected || !signerAddress || !isAdmin) {
+        if (!$connected || !$signerAddress || !$isAdmin) {
             requests.set([]);
             return;
         }
@@ -48,18 +48,16 @@
         try {
             error.set(null);
 
-            // First verify the request still exists and is pending
             const { data: currentRequest, error: checkError } = await supabase
                 .from('whitelist_requests')
                 .select('status')
                 .eq('id', id)
-                .maybeSingle();  // Prevents 406 error if not found
+                .maybeSingle();
 
             if (checkError) throw checkError;
             if (!currentRequest) throw new Error('Request not found');
             if (currentRequest.status !== 'pending') throw new Error('Request is no longer pending');
 
-            // Perform the update with optimistic concurrency control
             const { error: updateError } = await supabase
                 .from('whitelist_requests')
                 .update({
@@ -71,7 +69,6 @@
 
             if (updateError) throw updateError;
 
-            // Verify the update was successful
             const { data: verifyRequest, error: verifyError } = await supabase
                 .from('whitelist_requests')
                 .select('status')
@@ -83,7 +80,6 @@
                 throw new Error('Failed to verify status update');
             }
 
-            // Remove the updated request from local state
             requests.update(reqs => reqs.filter(request => request.id !== id));
         } catch (err) {
             console.error('Failed to update status:', err);
@@ -97,7 +93,7 @@
     onMount(() => {
         loadRequests();
         const interval = setInterval(() => {
-            if (connected && signerAddress && isAdmin) {
+            if ($connected && $signerAddress && $isAdmin) {
                 loadRequests();
             }
         }, 15000);
@@ -106,15 +102,14 @@
     });
 </script>
 
-<!-- UI Section -->
 <div class="container mx-auto py-8">
-    {#if !connected}
+    {#if !$connected}
         <Card.Root class="max-w-md mx-auto">
             <Card.Content class="text-center py-8">
                 Please connect your wallet to access the admin panel.
             </Card.Content>
         </Card.Root>
-    {:else if !isAdmin}
+    {:else if !$isAdmin}
         <Card.Root class="max-w-md mx-auto">
             <Card.Content class="text-center py-8">
                 You don't have admin access.
@@ -142,11 +137,12 @@
                         </div>
                     {/if}
                     
+                    
                     <Table.Root>
                         <Table.Header>
                             <Table.Row>
                                 <Table.Head>Wallet</Table.Head>
-                                <Table.Head>X Account</Table.Head>
+                                <Table.Head>X Handle</Table.Head>
                                 <Table.Head>Status</Table.Head>
                                 <Table.Head>Date</Table.Head>
                                 <Table.Head>Actions</Table.Head>
@@ -173,6 +169,7 @@
                                             {:else}
                                                 -
                                             {/if}
+                                            
                                         </Table.Cell>
                                         <Table.Cell>{request.status}</Table.Cell>
                                         <Table.Cell>{new Date(request.created_at).toLocaleDateString()}</Table.Cell>
@@ -197,11 +194,14 @@
                                         </Table.Cell>
                                     </Table.Row>
                                 {/each}
+                                
                             {/if}
+                            
                         </Table.Body>
                     </Table.Root>
                 </Card.Content>
             </Card.Root>
         </div>
     {/if}
+    
 </div>
